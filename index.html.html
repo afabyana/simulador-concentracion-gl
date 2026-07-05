@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de concentración en g/L</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --panel: #ffffff;
+    --ink: #1f2937;
+    --muted: #5b6472;
+    --line: #d7dce5;
+    --accent: #2f6fed;
+    --warn: #b45309;
+    --bad: #b91c1c;
+    --good: #047857;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  header {
+    padding: 18px 22px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+  }
+  h1 {
+    margin: 0 0 6px 0;
+    font-size: 26px;
+  }
+  .subtitle {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .teacher {
+    margin: 8px 0 0 0;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap: 18px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .controls {
+    display: grid;
+    gap: 16px;
+  }
+  label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 7px;
+    font-size: 16px;
+  }
+  input[type="range"] {
+    width: 100%;
+  }
+  select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 16px;
+    background: #fff;
+  }
+  .readout {
+    margin-top: 6px;
+    font-size: 18px;
+  }
+  .big-number {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .formula {
+    background: #eef4ff;
+    border-left: 6px solid var(--accent);
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 20px;
+    margin: 14px 0;
+  }
+  .note {
+    background: #f9fafb;
+    border: 1px solid var(--line);
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .sim-area {
+    min-height: 500px;
+    display: grid;
+    grid-template-columns: 1fr 230px;
+    gap: 14px;
+    align-items: end;
+  }
+  .beaker-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .beaker {
+    width: 270px;
+    height: 360px;
+    border: 5px solid #424b57;
+    border-top: none;
+    border-radius: 0 0 32px 32px;
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(to right, rgba(255,255,255,0.35), rgba(255,255,255,0) 32%, rgba(255,255,255,0.2) 70%, rgba(255,255,255,0.05)),
+      #f8fafc;
+  }
+  .marks {
+    position: absolute;
+    right: 8px;
+    top: 0;
+    bottom: 0;
+    width: 70px;
+    color: #374151;
+    font-size: 12px;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .mark {
+    position: absolute;
+    right: 0;
+    width: 50px;
+    height: 0;
+    border-top: 2px solid #374151;
+    text-align: right;
+  }
+  .mark span {
+    position: absolute;
+    right: 0;
+    top: -18px;
+    background: rgba(255,255,255,0.75);
+    padding-left: 2px;
+  }
+  .solution {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    transition: height 0.25s ease, background-color 0.25s ease, opacity 0.25s ease;
+    border-top: 3px solid rgba(0,0,0,0.22);
+  }
+  .solute-pile {
+    position: absolute;
+    bottom: 7px;
+    left: 58px;
+    right: 58px;
+    height: 0px;
+    background: repeating-linear-gradient(45deg, rgba(120,80,35,0.7), rgba(120,80,35,0.7) 6px, rgba(160,105,45,0.75) 6px, rgba(160,105,45,0.75) 12px);
+    border-radius: 50% 50% 12px 12px;
+    transition: height 0.25s ease;
+    opacity: 0.78;
+    z-index: 4;
+  }
+  .meter {
+    align-self: stretch;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 12px;
+  }
+  .meter-title {
+    font-weight: 800;
+    text-align: center;
+  }
+  .meter-bar {
+    width: 70px;
+    height: 310px;
+    margin: 0 auto;
+    border: 3px solid #374151;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    background: #f9fafb;
+  }
+  .meter-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    transition: height 0.25s ease, background-color 0.25s ease;
+  }
+  .meter-scale {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .status {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    font-size: 17px;
+  }
+  .status.good { background: #ecfdf5; color: var(--good); border-color: #a7f3d0; }
+  .status.warn { background: #fff7ed; color: var(--warn); border-color: #fed7aa; }
+  .status.bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+  button {
+    padding: 11px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  button.secondary { background: #4b5563; }
+  .button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .small {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .single-box {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 18px 18px 18px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .sim-area { grid-template-columns: 1fr; }
+    .meter { min-height: 390px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Simulador de concentración en g/L</h1>
+  <p class="subtitle">Para trabajar soluciones en contexto de bebidas y cocina: masa de soluto, volumen final y concentración.</p>
+  <p class="teacher">Docente: Andrea Sánchez</p>
+</header>
+
+<main>
+  <section class="card controls">
+    <div>
+      <label for="solute">Soluto</label>
+      <select id="solute">
+        <option value="azucar">Azúcar / sacarosa</option>
+        <option value="glucosa">Glucosa</option>
+        <option value="sal">Sal / cloruro de sodio</option>
+        <option value="acido">Ácido cítrico</option>
+        <option value="bicarbonato">Bicarbonato de sodio</option>
+        <option value="colorante">Colorante alimentario</option>
+      </select>
+      <p class="small">La intensidad de color es solo una ayuda visual. En la realidad, varias soluciones son incoloras.</p>
+    </div>
+
+    <div>
+      <label for="mass">Masa de soluto agregada</label>
+      <input id="mass" type="range" min="0" max="120" step="1" value="20">
+      <div class="readout"><span id="massValue" class="big-number">20</span> g</div>
+    </div>
+
+    <div>
+      <label for="volume">Volumen final indicado</label>
+      <input id="volume" type="range" min="50" max="1000" step="10" value="200">
+      <div class="readout"><span id="volumeValue" class="big-number">200</span> mL = <span id="volumeL">0,200</span> L</div>
+      <p class="small">Este control representa volumen final de solución, no volumen de agua agregada.</p>
+    </div>
+
+    <div class="formula">
+      concentración = masa de soluto disuelto ÷ volumen final de solución
+    </div>
+
+    <div class="two-col">
+      <div class="single-box">
+        <label>Relación m/V agregada</label>
+        <div><span id="concValue" class="big-number">100</span> g/L</div>
+        <p class="small">Es el cálculo usando toda la masa agregada, aunque no toda se disuelva.</p>
+      </div>
+      <div class="single-box">
+        <label>Concentración de solución homogénea</label>
+        <div><span id="validConcValue" class="big-number">100</span> g/L</div>
+        <p id="validConcText" class="small">Válida si el sistema sigue siendo homogéneo.</p>
+      </div>
+    </div>
+
+    <div class="single-box">
+      <label>Equivalente aproximado en mol/L</label>
+      <div><span id="molValue" class="big-number">0,29</span> mol/L</div>
+      <p id="molText" class="small">Solo se informa para la cantidad disuelta.</p>
+    </div>
+
+    <div id="status" class="status good"></div>
+
+    <div id="parameterNote" class="note"></div>
+
+    <div class="button-row">
+      <button id="doubleMass">Duplicar soluto</button>
+      <button id="halfVolume" class="secondary">Evaporar a la mitad</button>
+    </div>
+    <button id="reset" class="secondary">Reiniciar</button>
+  </section>
+
+  <section class="card sim-area">
+    <div class="beaker-wrap">
+      <div class="beaker" aria-label="vaso de precipitados">
+        <div class="marks">
+          <div class="mark" style="bottom: 100%"><span>1,0 L</span></div>
+          <div class="mark" style="bottom: 75%"><span>0,75 L</span></div>
+          <div class="mark" style="bottom: 50%"><span>0,50 L</span></div>
+          <div class="mark" style="bottom: 25%"><span>0,25 L</span></div>
+        </div>
+        <div id="solution" class="solution"></div>
+        <div id="solutePile" class="solute-pile"></div>
+      </div>
+      <div class="small">Vaso de precipitados: la escala representa el volumen final indicado. 1,0 L corresponde al vaso lleno.</div>
+    </div>
+
+    <div class="meter">
+      <div class="meter-title">Medidor de fase líquida</div>
+      <div class="meter-bar">
+        <div id="meterFill" class="meter-fill"></div>
+      </div>
+      <div id="meterScale" class="meter-scale">0 a 300 g/L</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Docente: Andrea Sánchez. Material didáctico propio. No reproduce código ni gráficos de PhET. Los límites de saturación son aproximaciones didácticas a 20 °C, expresadas como g de soluto disuelto por L de solución saturada. El simulador no representa soluciones sobresaturadas metaestables.
+</footer>
+
+<script>
+const data = {
+  azucar: {
+    label: "azúcar/sacarosa",
+    mm: 342.30,
+    limitGL: 890,
+    hue: 38,
+    note: "Referencia usada: la sacarosa forma una solución saturada de aproximadamente 67 % m/m a 20 °C; con densidad cercana a 1,33 g/mL equivale a unos 890 g/L de solución."
+  },
+  glucosa: {
+    label: "glucosa",
+    mm: 180.16,
+    limitGL: 570,
+    hue: 34,
+    note: "Referencia usada: límite didáctico aproximado de 570 g/L de solución, coherente con soluciones saturadas de glucosa cercanas al 47 % m/m a temperatura ambiente."
+  },
+  sal: {
+    label: "sal/cloruro de sodio",
+    mm: 58.44,
+    limitGL: 318,
+    hue: 205,
+    note: "Referencia usada: una solución saturada de NaCl a 20-25 °C contiene aproximadamente 26 % m/m de NaCl; con densidad cercana a 1,20 g/mL equivale a unos 318 g/L de solución."
+  },
+  acido: {
+    label: "ácido cítrico",
+    mm: 192.12,
+    limitGL: 750,
+    hue: 58,
+    note: "Referencia usada: el ácido cítrico es muy soluble; una solución saturada cercana a 59 % m/m a 20 °C equivale aproximadamente a 750 g/L de solución."
+  },
+  bicarbonato: {
+    label: "bicarbonato de sodio",
+    mm: 84.01,
+    limitGL: 90,
+    hue: 185,
+    note: "Referencia usada: el bicarbonato de sodio tiene solubilidad cercana a 9,3 g/100 mL de agua a 20 °C; se aproxima a 90 g/L de solución."
+  },
+  colorante: {
+    label: "colorante alimentario",
+    mm: null,
+    limitGL: null,
+    hue: 275,
+    note: "No se define límite de saturación porque depende de la composición exacta del colorante comercial."
+  }
+};
+
+const el = id => document.getElementById(id);
+const solute = el("solute");
+const mass = el("mass");
+const volume = el("volume");
+const massValue = el("massValue");
+const volumeValue = el("volumeValue");
+const volumeL = el("volumeL");
+const concValue = el("concValue");
+const validConcValue = el("validConcValue");
+const validConcText = el("validConcText");
+const molValue = el("molValue");
+const molText = el("molText");
+const solution = el("solution");
+const meterFill = el("meterFill");
+const solutePile = el("solutePile");
+const statusBox = el("status");
+const meterScale = el("meterScale");
+const parameterNote = el("parameterNote");
+
+function fmt(n, dec=0) {
+  return n.toLocaleString("es-UY", { maximumFractionDigits: dec, minimumFractionDigits: dec });
+}
+
+function update() {
+  const m = Number(mass.value);
+  const vml = Number(volume.value);
+  const vL = vml / 1000;
+  const cTotal = vL > 0 ? m / vL : 0;
+  const s = data[solute.value];
+
+  const hasLimit = s.limitGL !== null;
+  const exceedsSaturation = hasLimit && cTotal > s.limitGL;
+  const dissolvedMass = exceedsSaturation ? s.limitGL * vL : m;
+  const undissolvedMass = Math.max(0, m - dissolvedMass);
+  const cDissolved = vL > 0 ? dissolvedMass / vL : 0;
+
+  massValue.textContent = fmt(m);
+  volumeValue.textContent = fmt(vml);
+  volumeL.textContent = fmt(vL, 3);
+  concValue.textContent = fmt(cTotal, 1);
+
+  if (exceedsSaturation) {
+    validConcValue.textContent = "—";
+    validConcText.textContent = "No corresponde una concentración única para el sistema completo: hay solución saturada y soluto sin disolver.";
+  } else {
+    validConcValue.textContent = fmt(cDissolved, 1);
+    validConcText.textContent = "Válida para una solución homogénea.";
+  }
+
+  if (s.mm && !exceedsSaturation) {
+    molValue.textContent = fmt(cDissolved / s.mm, 2);
+    molText.textContent = "Calculado con la masa disuelta en una solución homogénea.";
+  } else if (s.mm && exceedsSaturation) {
+    molValue.textContent = "—";
+    molText.textContent = "No se informa para el sistema completo porque dejó de ser homogéneo.";
+  } else {
+    molValue.textContent = "—";
+    molText.textContent = "No disponible para este soluto.";
+  }
+
+  const levelPct = Math.max(5, Math.min(100, vml / 1000 * 100));
+  const displayC = hasLimit ? Math.min(cDissolved, s.limitGL) : cTotal;
+  const visualMax = hasLimit ? Math.max(300, s.limitGL) : 300;
+  const intensity = Math.max(0.08, Math.min(0.82, displayC / visualMax));
+  const hue = s.hue;
+  solution.style.height = levelPct + "%";
+  solution.style.backgroundColor = `hsla(${hue}, 80%, 55%, ${intensity})`;
+
+  const meterMax = hasLimit ? Math.max(300, Math.ceil(s.limitGL / 100) * 100) : 300;
+  const meterPct = Math.max(0, Math.min(100, displayC / meterMax * 100));
+  meterFill.style.height = meterPct + "%";
+  meterFill.style.backgroundColor = `hsla(${hue}, 80%, 48%, ${Math.max(0.35, intensity)})`;
+  meterScale.textContent = "0 a " + fmt(meterMax) + " g/L";
+
+  let pileHeight = 0;
+  if (exceedsSaturation) {
+    const relativeExcess = undissolvedMass / Math.max(1, dissolvedMass);
+    pileHeight = Math.min(85, 15 + relativeExcess * 130);
+  }
+  solutePile.style.height = pileHeight + "px";
+
+  statusBox.className = "status";
+  if (m === 0) {
+    statusBox.classList.add("warn");
+    statusBox.textContent = "No hay soluto agregado. La concentración es 0 g/L.";
+  } else if (exceedsSaturation) {
+    statusBox.classList.add("bad");
+    statusBox.textContent = `Sistema heterogéneo: a 20 °C se supera la saturación aproximada para ${s.label}. Se disuelven aproximadamente ${fmt(dissolvedMass,1)} g y quedan aproximadamente ${fmt(undissolvedMass,1)} g sin disolver.`;
+  } else if (hasLimit && cTotal >= 0.995 * s.limitGL) {
+    statusBox.classList.add("warn");
+    statusBox.textContent = `Solución saturada homogénea, suponiendo que todo el soluto agregado llegó a disolverse. Si se agregara más soluto a 20 °C, quedaría sólido sin disolver.`;
+  } else if (hasLimit && cTotal > 0.85 * s.limitGL) {
+    statusBox.classList.add("warn");
+    statusBox.textContent = `Solución homogénea cercana a la saturación aproximada a 20 °C.`;
+  } else if (!hasLimit) {
+    statusBox.classList.add("warn");
+    statusBox.textContent = "Para este soluto no se evalúa saturación, porque depende de la composición exacta del producto.";
+  } else {
+    statusBox.classList.add("good");
+    statusBox.textContent = "Solución homogénea: el soluto se considera disuelto y distribuido en el volumen final.";
+  }
+
+  parameterNote.textContent = `Temperatura de referencia: 20 °C. Límite usado para ${s.label}: ${hasLimit ? fmt(s.limitGL,0) + " g/L de solución saturada" : "no definido"}. ${s.note} La solubilidad cambia con la temperatura; este simulador no considera sobresaturación metaestable.`;
+}
+
+el("doubleMass").addEventListener("click", () => {
+  mass.value = Math.min(Number(mass.max), Number(mass.value) * 2);
+  update();
+});
+
+el("halfVolume").addEventListener("click", () => {
+  volume.value = Math.max(Number(volume.min), Math.round(Number(volume.value) / 2 / 10) * 10);
+  update();
+});
+
+el("reset").addEventListener("click", () => {
+  solute.value = "azucar";
+  mass.value = 20;
+  volume.value = 200;
+  update();
+});
+
+solute.addEventListener("change", update);
+mass.addEventListener("input", update);
+volume.addEventListener("input", update);
+update();
+</script>
+</body>
+</html>
